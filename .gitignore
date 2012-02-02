@@ -1,0 +1,8 @@
+# Site Specific config file #
+#############################
+edu_config.py
+
+# .pyc files                #
+#############################
+*.pyc
+
