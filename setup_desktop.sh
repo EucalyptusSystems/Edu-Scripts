@@ -2,12 +2,43 @@
 
 echo "Starting script..." >> /root/script_run.txt
 
-echo "Setting the hostname..." >> /root/script_run.txt
+#
+# We're having issues with Internet connectivity not being available until we run a few
+# pings so set this up here.
+#
+sleep 30
+
+ping -c 4 8.8.8.8
+
+#
+# Issue currently with the image. Doesn't have the "Alestic" PPA signing key so let's add
+# it so that we don't get untrusted package errors that cause aptitude to hang.
+#
+# The Alestic key is BE09C571 found @ https://launchpad.net/~alestic/+archive/ppa
+#
+apt-key adv --keyserver keyserver.ubuntu.com --recv-keys BE09C571
+
+#
+# Make it so that aptitude doesn't ask any questions and just does the defaults
+#
+export DEBIAN_FRONTEND=noninteractive
+export DEBIAN_PRIORITY=critical
+
+#
+# Update the system's package list and then with the latest packages
+#
+echo "Updating the system first..." >> /root/script_run.txt
+
+aptitude -y update
+aptitude -y safe-upgrade
+
 #
 # Get the public IP address, run host to do a reverse lookup, but it out of the
 # host reply and finally strip off the final period (.)
 #
-HOSTNAME=`curl -s http://169.254.169.254/latest/meta-data/public-ipv4 | xargs -I {} host {} | cut -d' ' -f5 | cut -d'.' -f1-3`
+echo "Setting the hostname..." >> /root/script_run.txt
+
+HOSTNAME=`curl -s http://169.254.169.254/latest/meta-data/public-ipv4 | xargs -I {} host {} | cut -d' ' -f5 | cut -d'.' -f'1-3'`
 hostname $HOSTNAME
 
 #
@@ -86,3 +117,10 @@ echo "Turn off DNS in SSH" >> /root/script_run.txt
 echo "UseDNS no" >> /etc/ssh/sshd_config
 
 /usr/sbin/service ssh restart
+
+#
+# Reset aptitude to the default question setttings
+#
+export DEBIAN_FRONTEND=dialog
+export DEBIAN_PRIORITY=high
+
