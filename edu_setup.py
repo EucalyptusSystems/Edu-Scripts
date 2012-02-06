@@ -89,17 +89,6 @@ def reboot_system(system_name, remote):
  
     run('/sbin/reboot')
 
-def gen_passphrase(size):
-    """
-    Create a passphrase that will then be turned into a crypt.
-
-    size -- This will be the number of characters of the resulting passphrase
-    """
-
-    chars = string.ascii_uppercase + string.ascii_lowercase + string.digits
-
-    return ''.join(random.choice(chars) for x in range(size))    
-
 def create_crypt(password):
     """
     Create a basic crypted password hash to use on the system.
@@ -151,13 +140,11 @@ def set_pod_passwords(pods, password_size):
 
         print frontend + " " + node
     
-        #password = gen_passphrase(password_size)
-	password = "eucalyptus"
+        password = "eucalyptus"
         
         print "Password given to the systems in Pod " + str(pod) + ": " + password
         
         crypt = create_crypt(password)
-        print crypt
 
         remote_set_password(frontend, crypt)
         remote_set_password(node, crypt)
@@ -199,11 +186,6 @@ remote, token = connect_to_cobbler(server, username, password)
 set_password = False
 password_size = 10
 
-if sys.argv[1] == "--testing":
-    print "Server: " + server
-    print "Username: " + username
-    print "Password: " + password
-    exit()
 if len(sys.argv) == 1:
     usage()
 elif sys.argv[1] == "--set-password":
