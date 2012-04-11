@@ -130,19 +130,15 @@ def set_pod_passwords(pods, password_size):
     password_size -- Size of the passphrase to be generated.
     """
 
-    for pod in pods:
-        if pod < 10:
-            frontend = "pod0" + str(pod) + "-frontend"
-            node = "pod0" + str(pod) + "-node"
-        else:
-            frontend = "pod" + str(pod) + "-frontend"
-            node = "pod" + str(pod) + "-node"
+    for frontend in pods:
+        node = frontend[0:5] + "-node"
 
         print frontend + " " + node
     
         password = "eucalyptus"
         
-        print "Password given to the systems in Pod " + str(pod) + ": " + password
+        print "Password given to the systems in Pod " + frontend[3:5] + ": " + password
+        print ""
         
         crypt = create_crypt(password)
 
@@ -156,11 +152,21 @@ def get_all_pods(remote):
     so we don't pass the token to this function.
 
     remote -- xmlrpclib server connection to the cobbler server
+
+    TODO -- Make it work only on pod* systems. Should be easy but should test first
     """
 
-    pods = remote.find_system({"hostname":"*"})
-    return pods
+    remote.find_system({"hostname":"pod*"})
 
+def get_all_frontends(remote):
+    """
+    A simple lookup for all frontend systems. Used when changing passwords.
+    
+    remote -- xmlrpclib server connection to the cobbler server
+    """
+
+    return remote.find_system({"hostname": "pod*-frontend"})
+    
 def connect_to_cobbler(server, username, password):
     """
     Make the connection to the cobbler server that will be used for the
@@ -192,8 +198,7 @@ elif sys.argv[1] == "--set-password":
     set_password = True
     for arg in sys.argv[2:]:
         if arg == "--all-pods":
-            pods = [ 1, 2, 3, 4, 5, 6, 7, 8, 9, 10,
-                    11, 12, 13, 14, 15, 16, 17, 18 ]
+            pods = get_all_frontends(remote)
             break
         elif arg[:6] == "--pod=":
             pods.append(int(arg[6:]))
@@ -202,8 +207,10 @@ elif sys.argv[1] == "--set-password":
 else:
     for arg in sys.argv[1:]:
         if arg == "--all-pods":
-            pods = get_all_pods(remote)
-            break
+            #pods = get_all_pods(remote)
+            #break
+            print "Needs to be fixed to wipe other systems not in EEC."
+            exit
         elif arg[:6] == "--pod=":
             current_pod = arg[6:]
             if len(current_pod) == 1:
