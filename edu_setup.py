@@ -21,6 +21,7 @@ from fabric.api import *
 import random
 import string
 import edu_config
+from optparse import OptionParser
 
 usage_string = """
 Setup pods for Eucalyptus Systems training classes.
@@ -71,9 +72,8 @@ def setup_netboot(system_name, remote, token):
  
     remote.modify_system(handle, "netboot_enabled", True, token)
 
-    result = remote.save_system(handle, token)
+    return remote.save_system(handle, token)
 
-    return result
 def reboot_system(system_name, remote):
     """
     Reboot the system so that a kickstart will happen.
@@ -97,9 +97,7 @@ def create_crypt(password):
     """
     
     manager = CRYPTPasswordManager('$1$')
-    crypt = manager.encode(password)
-
-    return crypt
+    return manager.encode(password)
 
 def remote_set_password(system_name, crypt):
     """
@@ -156,7 +154,7 @@ def get_all_pods(remote):
     TODO -- Make it work only on pod* systems. Should be easy but should test first
     """
 
-    remote.find_system({"hostname":"pod*"})
+    return remote.find_system({"hostname":"pod*"})
 
 def get_all_frontends(remote):
     """
@@ -184,63 +182,87 @@ def connect_to_cobbler(server, username, password):
 
     return remote, token
 
-pods = []
-server = edu_config.CBLR_SERVER
-username = edu_config.CBLR_USER
-password = edu_config.CBLR_PASS
-remote, token = connect_to_cobbler(server, username, password)
-set_password = False
-password_size = 10
+def get_pods(pods, frontends, nodes):
+    """
+    Setup the pod, frontend, and node numbers that were parsed out of the
+    command line argument.
 
-if len(sys.argv) == 1:
-    usage()
-elif sys.argv[1] == "--set-password":
-    set_password = True
-    for arg in sys.argv[2:]:
-        if arg == "--all-pods":
-            pods = get_all_frontends(remote)
-            break
-        elif arg[:6] == "--pod=":
-            pods.append(int(arg[6:]))
+    The return value is turned into a set and then back into a list to remove
+    any duplicate entires we might have.
+
+    pods -- The list of pods to add
+    frontends -- The list of frontends to add
+    nodes -- The list of nodes to add
+    """
+
+    new_pods = []
+
+    if not pods is None:
+        for pod in pods:
+            if int(pod) < 10 and len(pod) < 2:
+                new_pods.append("pod0%s-frontend" % pod)
+                new_pods.append("pod0%s-node" %pod)
+            else:
+                new_pods.append("pod%s-frontend" % pod)
+                new_pods.append("pod%s-node" % pod)
+
+    if not frontends is None:
+        for frontend in frontends:
+            if int(frontend) < 10 and len(frontend) < 2:
+                new_pods.append("pod0%s-frontend" % frontend)
+            else:
+                new_pods.append("pod%s-frontend" % frontend)
+
+    if not nodes is None:
+        for node in nodes:
+            if int(node) < 10 and len(node) < 2:
+                new_pods.append("pod0%s-node" % node)
+            else:
+                new_pods.append("pod%s-node" % node)
+
+    return list(set(new_pods))
+    
+def main():
+    pods = []
+    password_size = 10
+
+    remote, token = connect_to_cobbler(edu_config.CBLR_SERVER, edu_config.CBLR_USER, 
+                                       edu_config.CBLR_PASS)
+
+    parser = OptionParser()
+    parser.add_option("--set-password", action="store_true", dest="set_password", default=False)
+    parser.add_option("--all-pods", action="store_true", dest="all_pods", default=False)
+    parser.add_option("--pod", action="append", type="string", dest="pods")
+    parser.add_option("--frontend", action="append", type="string", dest="frontends")
+    parser.add_option("--node", action="append", type="string", dest="nodes")
+    parser.add_option("--debug", action="store_true", dest="debug", default=False)
+
+    (options, args) = parser.parse_args()
+
+
+    if options.all_pods:
+        pods = get_all_pods(remote)
+    else:
+        pods = get_pods(options.pods, options.frontends, options.nodes)
+
+    pods.sort()
+
+    if not options.debug:
+        if options.set_password == True:
+            set_pod_passwords(pods, password_size)
         else:
-            usage()
-else:
-    for arg in sys.argv[1:]:
-        if arg == "--all-pods":
-            #pods = get_all_pods(remote)
-            #break
-            print "Needs to be fixed to wipe other systems not in EEC."
-            exit
-        elif arg[:6] == "--pod=":
-            current_pod = arg[6:]
-            if len(current_pod) == 1:
-                pods.append("pod0" + str(current_pod) + "-frontend")
-                pods.append("pod0" + str(current_pod) + "-node")
-            else:
-                pods.append("pod" + str(current_pod) + "-frontend")
-                pods.append("pod" + str(current_pod) + "-node")
-        elif arg[:11] == "--frontend=":
-            current_pod = arg[11:]
-            if len(current_pod) == 1:
-                pods.append("pod0" + str(current_pod) + "-frontend")
-            else:
-                pods.append("pod" + str(current_pod) + "-frontend")
-        elif arg[:7] == "--node=":
-            current_pod = arg[7:]
-            if len(current_pod) == 1:
-                pods.append("pod0" + str(current_pod) + "-node")
-            else:
-                pods.append("pod" + str(current_pod) + "-node")
-        else:
-            usage()
+            for system in pods:
+                result = setup_netboot(system, remote, token)
+                if result == True:
+                    print "Success for " + system    
+                 
+                reboot_system(system, remote)    
+    else:
+        print ""
+        print options
+        print ""
+        print pods
 
-if set_password == True:
-    set_pod_passwords(pods, password_size)
-else:
-    for system in pods:
-        result = setup_netboot(system, remote, token)
-        if result == True:
-            print "Success for " + system    
-        
-        reboot_system(system, remote)    
-
+if __name__ == "__main__":
+    main()
+    exit
