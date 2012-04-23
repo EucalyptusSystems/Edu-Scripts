@@ -99,11 +99,12 @@ def create_crypt(password):
     manager = CRYPTPasswordManager('$1$')
     return manager.encode(password)
 
-def remote_set_password(system_name, crypt):
+def remote_set_password(remote, system_name, crypt):
     """
     Set the password on the remote machine using 'usermod' and the crypt that
     that was created earlier.
 
+    remote -- Conection to the Cobbler server
     system_name -- name of the system to perform the task on
     crypt -- password crypted to be used
     """
@@ -115,7 +116,7 @@ def remote_set_password(system_name, crypt):
 
     run('/usr/sbin/usermod -p \'' + crypt + '\' root')    
 
-def set_pod_passwords(pods, password_size):
+def set_pod_passwords(remote, pods, password_size):
     """
     Set the pod passwords. In this method we do all of the other steps that
     are needed such as passphrase generation, crypt generation, and finally 
@@ -124,6 +125,7 @@ def set_pod_passwords(pods, password_size):
     passwords to be changed. This relieves the student from needing to remember
     two passwords for his single pod.
 
+    remote -- Conection to the Cobbler server
     pods -- Integer list of posts to be updated.
     password_size -- Size of the passphrase to be generated.
     """
@@ -140,8 +142,8 @@ def set_pod_passwords(pods, password_size):
         
         crypt = create_crypt(password)
 
-        remote_set_password(frontend, crypt)
-        remote_set_password(node, crypt)
+        remote_set_password(remote, frontend, crypt)
+        remote_set_password(remote, node, crypt)
 
 def get_all_pods(remote):
     """
@@ -182,7 +184,7 @@ def connect_to_cobbler(server, username, password):
 
     return remote, token
 
-def get_pods(pods, frontends, nodes):
+def get_pods(pods, frontends, nodes, start, end):
     """
     Setup the pod, frontend, and node numbers that were parsed out of the
     command line argument.
@@ -193,9 +195,17 @@ def get_pods(pods, frontends, nodes):
     pods -- The list of pods to add
     frontends -- The list of frontends to add
     nodes -- The list of nodes to add
+    start -- Beginning of a range of pods
+    end -- End of a range of pods to use
     """
 
     new_pods = []
+
+    if (start < end):
+        if pods is None:
+            pods = []
+        for pod in xrange(start, end+1):
+            pods.append(str(pod))
 
     if not pods is None:
         for pod in pods:
@@ -224,7 +234,7 @@ def get_pods(pods, frontends, nodes):
     
 def main():
     pods = []
-    password_size = 10
+    password_size = edu_config.PASS_SIZE
 
     remote, token = connect_to_cobbler(edu_config.CBLR_SERVER, edu_config.CBLR_USER, 
                                        edu_config.CBLR_PASS)
@@ -235,21 +245,23 @@ def main():
     parser.add_option("--pod", action="append", type="string", dest="pods")
     parser.add_option("--frontend", action="append", type="string", dest="frontends")
     parser.add_option("--node", action="append", type="string", dest="nodes")
+    parser.add_option("--start-range", action="store", type="int", dest="start_range")
+    parser.add_option("--end-range", action="store", type="int", dest="end_range")
     parser.add_option("--debug", action="store_true", dest="debug", default=False)
 
     (options, args) = parser.parse_args()
 
-
     if options.all_pods:
         pods = get_all_pods(remote)
     else:
-        pods = get_pods(options.pods, options.frontends, options.nodes)
+        pods = get_pods(options.pods, options.frontends, options.nodes, 
+                        options.start_range, options.end_range)
 
     pods.sort()
 
     if not options.debug:
         if options.set_password == True:
-            set_pod_passwords(pods, password_size)
+            set_pod_passwords(remote, pods, password_size)
         else:
             for system in pods:
                 result = setup_netboot(system, remote, token)
