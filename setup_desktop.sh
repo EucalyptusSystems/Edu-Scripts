@@ -3,14 +3,6 @@
 echo "Starting script..." >> /root/script_run.txt
 
 #
-# We're having issues with Internet connectivity not being available until we run a few
-# pings so set this up here.
-#
-sleep 30
-
-ping -c 4 8.8.8.8
-
-#
 # Issue currently with the image. Doesn't have the "Alestic" PPA signing key so let's add
 # it so that we don't get untrusted package errors that cause aptitude to hang.
 #
@@ -48,7 +40,7 @@ hostname $HOSTNAME
 # the desktop number stripped from the reverse lookup added to it. This password
 # will then be crypted for both the system and VNC to allow user access to either.
 #
-WORD=""
+WORD="framed"
 
 DESKTOP_NUM=`echo $HOSTNAME | cut -d'.' -f1 | sed -Ee 's/[a-z\-]//g'`
 PASSWORD=`echo ${WORD}${DESKTOP_NUM} | tr [:upper:] [:lower:]`
@@ -117,6 +109,44 @@ echo "Turn off DNS in SSH" >> /root/script_run.txt
 echo "UseDNS no" >> /etc/ssh/sshd_config
 
 /usr/sbin/service ssh restart
+
+#
+# Download the BFEBS image to the desktops.
+#
+ID_NAME='storage'
+STORAGE_ID='XXXX'
+STORAGE_KEY='XXXX'
+STORAGE_URL='XXXX'
+STORAGE_BUCKET='bfebs'
+STORAGE_FILE='bfebs-centos-5-i386.img.gz'
+CURL=`which curl`
+S3CURL='/root/s3curl.pl'
+S3CURL_CFG='/root/.s3curl'
+
+${CURL} -o ${S3CURL} --url http://173.205.188.8:8773/services/Walrus/s3curl/s3curl-euca.pl
+
+chmod 0777 ${S3CURL}
+
+cat >>${S3CURL_CFG} <<EOF
+%awsSecretAccessKeys = (
+    # Public cloud storage
+    ${ID_NAME} => {
+        url => '${STORAGE_URL}',
+        id => '${STORAGE_ID}',
+        key => '${STORAGE_KEY}',
+    },
+);
+EOF
+
+chmod 0600 ${S3CURL_CFG}
+
+$S3CURL --id ${ID_NAME} -- http://${STORAGE_URL}:8773/services/Walrus/${STORAGE_BUCKET}/${STORAGE_FILE} >> /root/$STORAGE_FILE
+
+rm -rf ${S3CURL_CFG}
+
+sed -i  -e "s/STORAGE_ID='${STORAGE_ID}'/STORAGE_ID='XXXX'/" \
+	-e "s/STORAGE_KEY='${STORAGE_KEY}'/STORAGE_KEY='XXXX'/" \
+	-e "s/STORAGE_URL='${STORAGE_URL}'/STORAGE_URL='XXXX'/" /tmp/user-data*
 
 #
 # Reset aptitude to the default question setttings
