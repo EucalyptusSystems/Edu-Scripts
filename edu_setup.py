@@ -145,6 +145,33 @@ def set_pod_passwords(remote, pods, password_size):
         remote_set_password(remote, frontend, crypt)
         remote_set_password(remote, node, crypt)
 
+def print_profiles(profiles):
+    """
+    Print out the available profiles.
+
+    profiles -- a list of the available profiles for use on the pods
+    """
+
+    print "Available profiles for the pods are the following:"
+
+    for profile in profiles:
+        print "  %s" % (profile)
+
+def get_profiles(remote):
+    """
+    Get the available profiles for the pods
+    
+    remote -- xmlrcplib server connection to the cobbler server
+    """
+
+    profiles = remote.find_profile({"name": "edu-*-frontend"})
+    my_profiles = []
+    
+    for profile in profiles:
+        my_profiles.append(profile[:(len(profile)-9)])
+
+    return my_profiles
+
 def get_all_pods(remote):
     """
     A simple lookup for all hostnames that begin with "pod" on the cobbler
@@ -245,6 +272,7 @@ def main():
     parser.add_option("--pod", action="append", type="string", dest="pods")
     parser.add_option("--frontend", action="append", type="string", dest="frontends")
     parser.add_option("--node", action="append", type="string", dest="nodes")
+    parser.add_option("--get-profiles", action="store_true", dest="get_profiles", default=False)
     parser.add_option("--start-range", action="store", type="int", dest="start_range")
     parser.add_option("--end-range", action="store", type="int", dest="end_range")
     parser.add_option("--debug", action="store_true", dest="debug", default=False)
@@ -260,8 +288,11 @@ def main():
     pods.sort()
 
     if not options.debug:
-        if options.set_password == True:
+        if options.set_password:
             set_pod_passwords(remote, pods, password_size)
+        elif options.get_profiles:
+            profiles = get_profiles(remote)
+            print_profiles(profiles)
         else:
             for system in pods:
                 result = setup_netboot(system, remote, token)
