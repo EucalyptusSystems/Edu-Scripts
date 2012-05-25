@@ -23,24 +23,23 @@ import string
 import edu_config
 from optparse import OptionParser
 
-def setup_netboot(system_name, remote, token):
+def modify_system(system_name, prop_name, prop_value, remote, token):
     """
-    Setup netboot on the system given to this command through the XMLRPC
-    interface to cobbler. We use the "netboot enabled" property and set it
-    to True. Then we must save the settings so that cobbler server makes the
-    setting effective.
+    Generic method to modify systems in cobbler.
 
     system_name -- String with the name of the system
+    prop_name -- name of the property in cobbler to be changed
+    prop_value -- value to change the property in cobbler to
     remote -- xmlrpclib server connection to the cobbler server
     token -- Token to modify settings on the cobbler server
     """
 
     handle = remote.get_system_handle(system_name, token)
- 
-    remote.modify_system(handle, "netboot_enabled", True, token)
+
+    remote.modify_system(handle, prop_name, prop_value, token)
 
     return remote.save_system(handle, token)
-
+    
 def reboot_system(system_name, remote):
     """
     Reboot the system so that a kickstart will happen.
@@ -139,22 +138,6 @@ def get_profiles(remote):
 
     return my_profiles
 
-def set_profile(system, profile, remote, token):
-    """
-    Set the profile on a system.
-
-    system -- system name
-    profile -- profile name
-    remote -- xmlrpclib server connection to the cobbler server
-    token -- current authentication token
-    """
-
-    handle = remote.get_system_handle(system, token) 
-
-    remote.modify_system(handle, "profile", profile, token)
-
-    return remote.save_system(handle, token)
-
 def check_profile(profile, remote):
     """
     Checks the validity of a profile
@@ -165,7 +148,6 @@ def check_profile(profile, remote):
 
     return profile in get_profiles(remote)
     
-
 def get_all_pods(remote):
     """
     A simple lookup for all hostnames that begin with "pod" on the cobbler
@@ -298,24 +280,31 @@ def main():
         elif options.get_profiles:
             profiles = get_profiles(remote)
             print_profiles(profiles)
-        elif options.profile != "":
+        elif options.profile != None:
             if not check_profile(options.profile, remote):
                 print "Profile does not exist. Please check the name with --get-profiles"
                 exit(2)
 
             for system in pods:
                 if "frontend" in system:
-                    result = set_profile(system, options.profile+"-frontend", remote, token)
+                    result = modify_system(system, "profile", options.profile+"-frontend",
+                                            remote, token)
                 else:
-                    result = set_profile(system, options.profile+"-node", remote, token)
+                    result = modify_system(system, "profile", options.profile+"-node",
+                                            remote, token)
 
                 if result == True:
                     print "Profile Changed for %s" % (system)
+                else:
+                    print "Error changing profile on %s" % (system)
         else:
             for system in pods:
-                result = setup_netboot(system, remote, token)
+                result = modify_system(system, "netboot_enabled", True, remote, token)
+
                 if result == True:
                     print "Success for " + system    
+                else:
+                    print "Error for %s" % (system)
                  
                 reboot_system(system, remote)    
     else:
