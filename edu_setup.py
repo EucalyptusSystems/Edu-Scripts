@@ -23,39 +23,6 @@ import string
 import edu_config
 from optparse import OptionParser
 
-usage_string = """
-Setup pods for Eucalyptus Systems training classes.
-
-edu_setup [--set-password] [--all-pods] [--pod=XX] [--frontend=XX] [--node=XX]
-
-OPTIONAL PARAMETERS
-
---set-password      This will cause a random root password to be set on any pods
-                    which are mentioned with either --all-pods or --pod=XX.
-                    Note: You cannot change the password on a single system
-                    in a pod. Both systems must have change the root password.
-
---all-pods          Run the operation on all of the training pods. This can only
-                    be mentioned once and all other delarations will be ignored.
-
---pod=XX            Run the operation on pod number XX. This flag can be used
-                    multiple times.
-
---frontend=XX       Run the operation on only the frontend of pod number XX. 
-                    This flag may be used multiple times. NOTE: This value is
-                    not valid in conjunction with the --set_password hook.
-
---node=XX           Run the operation on only the node of pod number XX. This
-                    flag may be used multiple times. NOTE: This value is not 
-                    valid in conjunction with the --set_password hook.
-
--h, --help          Print this help text.
-"""
-
-def usage():
-    print usage_string
-    exit()
-
 def setup_netboot(system_name, remote, token):
     """
     Setup netboot on the system given to this command through the XMLRPC
@@ -294,16 +261,26 @@ def main():
                                        edu_config.CBLR_PASS)
 
     parser = OptionParser()
-    parser.add_option("--set-password", action="store_true", dest="set_password", default=False)
-    parser.add_option("--all-pods", action="store_true", dest="all_pods", default=False)
-    parser.add_option("--pod", action="append", type="string", dest="pods")
-    parser.add_option("--frontend", action="append", type="string", dest="frontends")
-    parser.add_option("--node", action="append", type="string", dest="nodes")
-    parser.add_option("--get-profiles", action="store_true", dest="get_profiles", default=False)
-    parser.add_option("--set-profile", action="store", type="string", dest="profile")
-    parser.add_option("--start-range", action="store", type="int", dest="start_range")
-    parser.add_option("--end-range", action="store", type="int", dest="end_range")
-    parser.add_option("--debug", action="store_true", dest="debug", default=False)
+    parser.add_option("--set-password", action="store_true", dest="set_password", default=False,
+        help="set the password of the pod to 'eucalyptus' and can only be used entire pods")
+    parser.add_option("--all-pods", action="store_true", dest="all_pods", default=False,
+        help="apply the operation to all pods")
+    parser.add_option("--pod", action="append", type="string", dest="pods",
+        help="used to select pods")
+    parser.add_option("--frontend", action="append", type="string", dest="frontends",
+        help="used to select frontends")
+    parser.add_option("--node", action="append", type="string", dest="nodes",
+        help="used to select nodes")
+    parser.add_option("--get-profiles", action="store_true", dest="get_profiles", default=False,
+        help="provide a list of available profiles")
+    parser.add_option("--set-profile", action="store", type="string", dest="profile",
+        help="set the lists systems with the profile provided")
+    parser.add_option("--start-range", action="store", type="int", dest="start_range",
+        help="starts a range of pods to use")
+    parser.add_option("--end-range", action="store", type="int", dest="end_range",
+        help="ends a range of pods to use")
+    parser.add_option("--debug", action="store_true", dest="debug", default=False,
+        help="show what the program has received from the command line")
 
     (options, args) = parser.parse_args()
 
