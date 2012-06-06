@@ -148,6 +148,33 @@ def check_profile(profile, remote):
 
     return profile in get_profiles(remote)
     
+def check_pods(pods):
+    """
+    Check to make sure we are working with complete pods and not just random systems.
+
+    pods -- list of pods given to the script
+    """
+
+    all_pods = True
+
+    if len(pods) % 2 != 0:
+        return False
+
+    for system in pods:
+        if "frontend" in system:
+           if (system[:6] + "node") in pods:
+               all_pods = True
+           else:
+                all_pods = False
+
+        if "node" in system:
+            if (system[:6] + "frontend") in pods:
+                all_pods = True
+            else:
+                all_pods = False
+
+    return all_pods
+
 def get_all_pods(remote):
     """
     A simple lookup for all hostnames that begin with "pod" on the cobbler
@@ -283,6 +310,10 @@ def main():
         elif options.profile != None:
             if not check_profile(options.profile, remote):
                 print "Profile does not exist. Please check the name with --get-profiles"
+                exit(2)
+
+            if not check_pods(pods):
+                print "Profiles should only be set on complete pods"
                 exit(2)
 
             for system in pods:
