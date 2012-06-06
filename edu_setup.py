@@ -297,6 +297,8 @@ def main():
                     print "Profile Changed for %s" % (system)
                 else:
                     print "Error changing profile on %s" % (system)
+        elif len(pods) == 0:
+            parser.print_help()
         else:
             for system in pods:
                 result = modify_system(system, "netboot_enabled", True, remote, token)
