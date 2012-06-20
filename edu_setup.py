@@ -52,6 +52,9 @@ def reboot_system(system_name, remote):
 
     system = remote.get_system(system_name)
     env.host_string = system['interfaces']['eth0']['ip_address']
+    
+    if env.host_string == "":
+        env.host_string = system['interfaces']['br0']['ip_address']
  
     run('/sbin/reboot')
 
