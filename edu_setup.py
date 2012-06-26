@@ -100,19 +100,20 @@ def set_pod_passwords(remote, pods, password_size):
     """
 
     for frontend in pods:
-        node = frontend[0:5] + "-node"
+        if "frontend" in frontend:
+            node = frontend[0:5] + "-node"
 
-        print frontend + " " + node
-    
-        password = "eucalyptus"
+            print frontend + " " + node
         
-        print "Password given to the systems in Pod " + frontend[3:5] + ": " + password
-        print ""
-        
-        crypt = create_crypt(password)
+            password = "eucalyptus"
+            
+            print "Password given to the systems in Pod " + frontend[3:5] + ": " + password
+            print ""
+            
+            crypt = create_crypt(password)
 
-        remote_set_password(remote, frontend, crypt)
-        remote_set_password(remote, node, crypt)
+            remote_set_password(remote, frontend, crypt)
+            remote_set_password(remote, node, crypt)
 
 def print_profiles(profiles):
     """
