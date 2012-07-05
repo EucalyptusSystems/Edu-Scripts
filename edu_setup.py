@@ -50,13 +50,13 @@ def reboot_system(system_name, remote):
 
     env.disable_known_hosts = True
 
-    system = remote.get_system(system_name)
-    env.host_string = system['interfaces']['eth0']['ip_address']
-    
-    if env.host_string == "":
-        env.host_string = system['interfaces']['br0']['ip_address']
- 
-    run('/sbin/reboot')
+    interface, ip_address = get_ip(remote, system_name)
+
+    if ip_address != "No IP":
+        env.host_string = ip_address 
+        run('/sbin/reboot')
+    else:
+        print "Issue getting IP address for %s" % (system)
 
 def create_crypt(password):
     """
@@ -80,10 +80,13 @@ def remote_set_password(remote, system_name, crypt):
 
     env.disable_known_hosts = True
 
-    system = remote.get_system(system_name)
-    env.host_string = system['interfaces']['eth0']['ip_address']
+    interface, ip_address = get_ip(remote, system_name)
 
-    run('/usr/sbin/usermod -p \'' + crypt + '\' root')    
+    if ip_address != "No IP":
+        env.host_string = ip_address
+        run('/usr/sbin/usermod -p \'' + crypt + '\' root')
+    else:
+        print "Issue getting IP address for %s" % (system)
 
 def set_pod_passwords(remote, pods, password_size):
     """
@@ -179,6 +182,33 @@ def check_pods(pods):
 
     return all_pods
 
+def setup_bridge(remote, token, system):
+    return None 
+
+def destroy_bridge(remote, token, system):
+    return None    
+
+def get_ip(remote, system):
+    """
+    Get the IP address of the system. Will search through the available
+    interfaces in Cobbler and will discover the primary IP. edu_config.py has
+    a listing of interfaces that this checks from what is returned by Cobbler.
+    """
+
+    system_info = remote.get_system(system)
+    
+    if system_info == "~":
+        print "Error: System not found!"
+        return ("Not Fount", "No IP")
+
+    for interface in system_info['interfaces'].iterkeys():
+        if (interface in edu_config.INTERFACES and 
+            system_info['interfaces'][interface]['interface_type'] != "bridge_slave"):
+
+            return (interface, system_info['interfaces'][interface]['ip_address'])
+
+    return ("Not Found", "No IP")
+    
 def get_all_pods(remote):
     """
     A simple lookup for all hostnames that begin with "pod" on the cobbler
@@ -345,6 +375,7 @@ def main():
                  
                 reboot_system(system, remote)    
     else:
+        get_ip(remote, "pod10-node")
         print ""
         print options
         print ""
