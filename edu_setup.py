@@ -183,10 +183,57 @@ def check_pods(pods):
     return all_pods
 
 def setup_bridge(remote, token, system):
-    return None 
+    """
+    Setup the bridge interface when switching profiles to those that use KVM such as CentOS 6.
+    """
+    interface, ip_address = get_ip(remote, system)
+    
+    if interface != 'br0' and interface != "Not Found":
+        interface_info = remote.get_system(system)['interfaces'][interface]
+        rtn = modify_system(system, 'modify_interface', {
+            "interfacetype-" + interface:       "bridge_slave",
+            "interfacemaster-" + interface:     "br0",
+        }, remote, token)
+
+        rtn = modify_system(system, 'modify_interface', {
+            "macaddress-br0":       interface_info['mac_address'],
+            "ipaddress-br0":        interface_info['ip_address'],
+            "netmask-br0":          interface_info['netmask'],
+            "static-br0":           True,
+            "interfacetype-br0":    "bridge",
+        }, remote, token)
+
+        return rtn 
+
+    if interface == "Not Found":
+        return False
+    else:
+        return True
 
 def destroy_bridge(remote, token, system):
-    return None    
+    """
+    Remove a bridge interface that is created by a profile that uses KVM such as CentOS 6.
+    """
+    
+    interface, ip_address = get_ip(remote, system)
+
+    if interface == "br0" and interface != "Not Found":
+        for key,values in remote.get_system(system)['interfaces'].items():
+            if values['interface_type'] == "bridge_slave":
+                interface_name = key
+
+        rtn = modify_system(system, 'delete_interface', 'br0', remote, token)
+
+        rtn = modify_system(system, 'modify_interface', {
+            "interfacetype-" + interface_name: "na",
+        }, remote, token)
+
+        return rtn
+
+    if interface == "Not Found":
+        return False
+    else:
+        return True
 
 def get_ip(remote, system):
     """
