@@ -404,6 +404,10 @@ def main():
                 else:
                     result = modify_system(system, "profile", options.profile+"-node",
                                             remote, token)
+                    if options.profile in edu_config.PROFILES_NEED_BR0:
+                        setup_bridge(remote, token, system)
+                    else:
+                        destroy_bridge(remote, token, system)
 
                 if result == True:
                     print "Profile Changed for %s" % (system)
