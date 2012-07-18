@@ -118,6 +118,17 @@ def set_pod_passwords(remote, pods, password_size):
             remote_set_password(remote, frontend, crypt)
             remote_set_password(remote, node, crypt)
 
+def print_pod_profiles(pods, remote):
+    """
+    Print out the profiles of the pods given.
+
+    pods -- list of pods
+    remote -- xlmrpclib server connection to the cobbler server
+    """
+    for pod in pods:
+        profile = remote.get_system(pod)['profile']
+        print "%s: %s" % (pod, profile)
+
 def print_profiles(profiles):
     """
     Print out the available profiles.
@@ -386,8 +397,11 @@ def main():
         if options.set_password:
             set_pod_passwords(remote, pods, password_size)
         elif options.get_profiles:
-            profiles = get_profiles(remote)
-            print_profiles(profiles)
+            if pods == []:
+                profiles = get_profiles(remote)
+                print_profiles(profiles)
+            else:
+                print_pod_profiles(pods, remote)
         elif options.profile != None:
             if not check_profile(options.profile, remote):
                 print "Profile does not exist. Please check the name with --get-profiles"
