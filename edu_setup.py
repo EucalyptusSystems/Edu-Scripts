@@ -108,7 +108,7 @@ def set_pod_passwords(remote, pods, password_size):
 
             print frontend + " " + node
         
-            password = "eucalyptus"
+            password = edu_config.PASSWORD
             
             print "Password given to the systems in Pod " + frontend[3:5] + ": " + password
             print ""
