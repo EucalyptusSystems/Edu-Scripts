@@ -40,7 +40,7 @@ hostname $HOSTNAME
 # the desktop number stripped from the reverse lookup added to it. This password
 # will then be crypted for both the system and VNC to allow user access to either.
 #
-WORD="framed"
+WORD="xxxx"
 
 DESKTOP_NUM=`echo $HOSTNAME | cut -d'.' -f1 | sed -Ee 's/[a-z\-]//g'`
 PASSWORD=`echo ${WORD}${DESKTOP_NUM} | tr [:upper:] [:lower:]`
